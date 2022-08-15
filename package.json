@@ -1,0 +1,18 @@
+{
+  "name": "mhr-db",
+  "version": "1.0.0",
+  "dependencies": {
+    "chalk": "^5.0.1",
+    "cheerio": "^1.0.0-rc.12",
+    "node-fetch": "^3.2.10",
+    "ora": "^6.1.2"
+  },
+  "type": "module",
+  "scripts": {
+    "search": "node search.js",
+    "gems": "node gems.js",
+    "armor": "node armor.js",
+    "monster-scraper": "node monster-scraper.js",
+    "monster-csv": "node monster-csv.js"
+  }
+}
