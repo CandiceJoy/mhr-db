@@ -49,7 +49,6 @@ Nrm: "Normal",
 function processBowStats( $, text )
 {
 	const obj = {"Shot Types":[]};
-	console.log(text);
 	const arcMatches = text.match( /^(\w+)\s/i );
 	obj["Arc Shot"] = arcMatches[1];
 	text = text.replace(arcMatches[1] + " ","");
@@ -66,7 +65,7 @@ function processBowStats( $, text )
 		};
 		obj["Shot Types"].push( shotType );
 	}
-	
+
 	return obj;
 }
 function processBowgunStats( $, element )
