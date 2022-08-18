@@ -1,5 +1,5 @@
 import fs                                                from "fs";
-import {debug, color, fetchAsFile, getFile, fetchAsText} from "./util.js";
+import {debug, color, fetchAsFile, getFile, fetchAsText, sanitise,tableToArrayOfObj} from "./util.js";
 import {load}                                            from "cheerio";
 import ora from "ora";
 
@@ -16,55 +16,6 @@ let $ = load(html);
 
 const monsterTags = $(".group .text-center h3 a");
 const monsters = [];
-
-function sanitise(str)
-{
-	return str.replaceAll(/(^\s+|\s+$)/g, "").replaceAll(/(\s\s+)/g, " ");
-}
-
-function rowToArray(row)
-{
-	const cols = [];
-	row = $(row).children();
-
-	for(const col of row)
-	{
-		cols.push(sanitise($(col).text()));
-	}
-
-	return cols;
-}
-
-function rowToObj(row, headers)
-{
-	const obj = {};
-	const cols = rowToArray(row);
-
-	for(let x = 0; x < cols.length; x++)
-	{
-		obj[headers[x]] = cols[x];
-	}
-
-	return obj;
-}
-
-function rowsToArrayOfObj(rows, headers)
-{
-	const out = [];
-
-	for(const row of rows)
-	{
-		out.push(rowToObj(row, headers));
-	}
-
-	return out;
-}
-
-function tableToArrayOfObj(table, headers, rowSelector = "tbody tr")
-{
-	const rows = $(table).find(rowSelector);
-	return rowsToArrayOfObj(rows, headers);
-}
 
 for(const monsterTag of monsterTags)
 {
