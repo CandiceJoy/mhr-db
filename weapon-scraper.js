@@ -258,7 +258,7 @@ for(let weaponType = startingWeapon; weaponType < numWeapons; weaponType++)
 	const tables = $("table");
 	let data;
 
-	data = tableToArrayOfObj(tables[0], [null/*Image*/, "Name", "Slots", "Attack", "Bonuses", "Bowgun Stats", "Other",
+	data = tableToArrayOfObj(tables[0], [null/*Image*/, "Name", "Slots", "Attack", "Bonuses", "Ranged Stats", "Other",
 	                                     "Rarity\/\/Rare (\\d+)\\\\"], function(col, html, text)
 	                         {
 		                         const element = $(html);
@@ -301,7 +301,7 @@ for(let weaponType = startingWeapon; weaponType < numWeapons; weaponType++)
 		                ele["WeaponType"] = weaponTypes[weaponType];
 		                return ele;
 	                });
-	data = rearrangeObjs(data,["Name","Rarity", "Attack", "Slots", "Bonuses", "Other", "Bowgun Stats"]);
+	data = rearrangeObjs(data,["Name","Rarity", "Attack", "Slots", "Bonuses", "Other", "Ranged Stats"]);
 
 	weapons = weapons.concat( data );
 }

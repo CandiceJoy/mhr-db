@@ -27,7 +27,7 @@ const csv = generateCsv(armors,function(header,obj){
 		case "Other":
 			out = arrayToString( obj );
 			break;
-		case "Bowgun Stats":
+		case "Ranged Stats":
 			if( obj )
 			{
 				out += "Deviation: " + obj.Deviation;
