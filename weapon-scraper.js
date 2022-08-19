@@ -48,9 +48,9 @@ Nrm: "Normal",
 
 function processBowStats( $, text )
 {
-	const obj = {"Shot Types":[]};
+	const obj = {ShotTypes:[]};
 	const arcMatches = text.match( /^(\w+)\s/i );
-	obj["Arc Shot"] = arcMatches[1];
+	obj.ArcShot = arcMatches[1];
 	text = text.replace(arcMatches[1] + " ","");
 
 	const shotPattern = "(\\w+)\\sLevel\\s(\\d)";
@@ -60,10 +60,10 @@ function processBowStats( $, text )
 	{
 		const matches = shotMatch.match( new RegExp( shotPattern, "i" ) );
 		const shotType = {
-			type: matches[1],
-			level: matches[2]
+			Type: matches[1],
+			Level: matches[2]
 		};
-		obj["Shot Types"].push( shotType );
+		obj.ShotTypes.push( shotType );
 	}
 
 	return obj;
@@ -71,7 +71,7 @@ function processBowStats( $, text )
 function processBowgunStats( $, element )
 {
 	const obj = {
-		"Ammo Types": []
+		AmmoTypes: []
 	};
 	const tables = element.find("table");
 	let rows = [];
@@ -114,10 +114,10 @@ function processBowgunStats( $, element )
 
 						if( matches[x] && matches[x] >= 1 )
 						{
-							obj["Ammo Types"].push({
-								                       type: ammoTypeXlat[type],
-								                       level: x-1,
-								                       magazine: matches[x]
+							obj.AmmoTypes.push({
+								                       Type: ammoTypeXlat[type],
+								                       Level: x-1,
+								                       Magazine: matches[x]
 							                       });
 						}
 					}
@@ -187,8 +187,8 @@ function processSlots(html)
 	}
 
 	return {
-		slots      : slots.join(""),
-		rampageSlot: rampSlot
+		Slots      : slots.join(""),
+		RampageSlot: rampSlot
 	};
 }
 
@@ -197,7 +197,7 @@ function processBonuses($, element, text)
 	//console.log("Data: ", data);
 	//console.log("Text: ", text);
 	//process.exit(0);
-	if(isEmptyString(text))
+	if(!isEmptyString(text))
 	{
 		const img = element.find("img");
 		const defenseBonusMatches = text.match(/Defense\sBonus\s+\+(\d+)\s?/);
@@ -237,6 +237,7 @@ function processBonuses($, element, text)
 			return text;
 		}
 
+		//console.log(bonuses);
 		return bonuses;
 	}
 	else
@@ -258,7 +259,7 @@ for(let weaponType = startingWeapon; weaponType < numWeapons; weaponType++)
 	const tables = $("table");
 	let data;
 
-	data = tableToArrayOfObj(tables[0], [null/*Image*/, "Name", "Slots", "Attack", "Bonuses", "Ranged Stats", "Other",
+	data = tableToArrayOfObj(tables[0], [null/*Image*/, "Name", "Slots", "Attack", "Bonuses", "RangedStats", "Other",
 	                                     "Rarity\/\/Rare (\\d+)\\\\"], function(col, html, text)
 	                         {
 		                         const element = $(html);
@@ -301,7 +302,7 @@ for(let weaponType = startingWeapon; weaponType < numWeapons; weaponType++)
 		                ele["WeaponType"] = weaponTypes[weaponType];
 		                return ele;
 	                });
-	data = rearrangeObjs(data,["Name","Rarity", "Attack", "Slots", "Bonuses", "Other", "Ranged Stats"]);
+	data = rearrangeObjs(data,["Name","WeaponType","Rarity", "Attack", "Slots", "Bonuses", "Other", "RangedStats"]);
 
 	weapons = weapons.concat( data );
 }

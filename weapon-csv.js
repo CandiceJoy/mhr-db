@@ -8,33 +8,75 @@ const csv = generateCsv(armors,function(header,obj){
 	switch( header )
 	{
 		case "Slots":
-			if( typeof obj.slots === "object" )
+			if( Array.isArray( obj.Slots ) )
 			{
-				out += obj.slots.join("");
+				out += obj.Slots.join("");
 			}
 
-			if( obj.rampageSlot )
+			if( obj.RampageSlot )
 			{
 				if( !isEmptyString( out ) )
 				{
 					out += ", ";
 				}
 
-				out += "Rampage: " + obj.rampageSlot;
+				out += "Rampage: " + obj.RampageSlot;
 			}
 			break;
 		case "Bonuses":
 		case "Other":
 			out = arrayToString( obj );
 			break;
-		case "Ranged Stats":
-			if( obj )
+		case "RangedStats":
+			if( !obj )
 			{
+				break;
+			}
+
+			const ammoTypes = obj.AmmoTypes;
+			const shotTypes = obj.ShotTypes;
+
+			//console.log("Obj: ",obj);
+			//console.log("ammo: ", ammoTypes);
+			//console.log("shot: ", shotTypes);
+
+			if( ammoTypes )
+			{
+				//Bowgun
 				out += "Deviation: " + obj.Deviation;
 				out += ", Recoil: " + obj.Recoil;
 				out += ", Reload: " + obj.Reload;
+
+				for( const type of ammoTypes )
+				{
+					out += ", " + `${type.Type} ${type.Level} @${type.Magazine}`;
+				}
 			}
 
+			if( shotTypes  )
+			{
+				//console.log("shotTypes: ",shotTypes);
+				//Bow
+				out += "Arc Shot: " + obj.ArcShot + ", Shot Types: ";
+				let first = true;
+
+				for( const shotType of shotTypes )
+				{
+					//console.log("shotType: ", shotType);
+					if( !first )
+					{
+						out += ", ";
+					}
+					else
+					{
+						first = false;
+					}
+
+					out += `${shotType.Type} ${shotType.Level}`;
+				}
+			}
+
+			//console.log(out);
 			break;
 		default:
 			throw "Unknown header: " + header;

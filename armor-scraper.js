@@ -1,7 +1,9 @@
 import {load}                           from "cheerio";
 import fs                               from "fs";
-import ora                                                                        from "ora";
-import {EMPTY_REGEX, fetchAsText, rearrangeObj, rearrangeObjs, tableToArrayOfObj} from "./util.js";
+import ora                                                                                        from "ora";
+import {
+	EMPTY_REGEX, fetchAsText, generateCsv, getObjFromFile, rearrangeObj, rearrangeObjs, tableToArrayOfObj
+} from "./util.js";
 
 const baseUrl = "https://mhrise.kiranico.com/data/armors?view=";
 const rarities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -116,4 +118,28 @@ for(const rarity of rarities)
 
 spinner.text = "Writing data to file";
 fs.writeFileSync("armor.json", JSON.stringify(armors, null, "\t"));
+
+spinner.text = "Writing CSV file"
+
+const armors = getObjFromFile("armor.json");
+
+const csv = generateCsv(armors,function(header,obj){
+	switch( header )
+	{
+		case "Slots":
+			return obj.join("");
+		case "Skills":
+			let skills = [];
+			for( const skill of Object.keys(obj))
+			{
+				const level = obj[skill];
+				skills.push(skill + " " + level);
+			}
+			return skills.join(", ");
+		default:
+			throw "Unknown header: " + header;
+	}
+});
+
+fs.writeFileSync("armor.csv",csv);
 spinner.succeed("Done");

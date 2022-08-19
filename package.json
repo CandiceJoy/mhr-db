@@ -10,13 +10,9 @@
   "type": "module",
   "scripts": {
     "search": "node search.js",
-    "gems": "node gems.js",
     "armor": "node armor.js",
-    "monster-scraper": "node monster-scraper.js",
-    "monster-csv": "node monster-csv.js",
-    "armor-scraper": "node armor-scraper.js",
-    "armor-csv": "node armor-csv.js",
-    "weapon-scraper": "node weapon-scraper.js",
-    "weapon-csv": "node weapon-csv.js"
+    "monsters": "node monsters.js",
+    "armor": "node armor.js",
+    "weapons": "node weapons.js"
   }
 }
