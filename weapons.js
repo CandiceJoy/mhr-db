@@ -1,9 +1,9 @@
-import {load}                                                from "cheerio";
-import {getBlankLine, getValue, insert, qualify, setHeaders} from "./csv-utils.js";
+import {load}                                             from "cheerio";
+import {getBlankLine, getValue, insert, qualify, initCsv} from "./csv-utils.js";
 import {
 	arrayToString, debug, fetchAsText, generateCsv, getObjFromFile, isEmptyString, rearrangeObjs, sanitise,
 	tableToArrayOfObj
-}                                                            from "./util.js";
+}                                                         from "./util.js";
 import ora            from "ora";
 import fs             from "fs";
 
@@ -410,7 +410,7 @@ const headers = ["Name", "Type", "Rarity", "Attack", "Affinity", "Slots", "Rampa
                  "Element Attack", "Song", "Shelling Type", "Shelling Level", "Kinsect Level", "Phial Type", "Phial Amount", "Coating", "Arc Shot",
                  "Shot Type", "Shot Level", "Deviation", "Recoil", "Reload", "Ammo Type", "Ammo Level",
                  "Ammo Magazine"];
-setHeaders( headers );
+initCsv(headers );
 let csv = [headers];
 
 function processCsvBonuses(main, others, weapon)

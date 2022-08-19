@@ -1,3 +1,5 @@
+import fs from "fs";
+
 let headers;
 
 export function getBlankLine()
@@ -12,8 +14,18 @@ export function getBlankLine()
 	return out;
 }
 
+function checkHeaders()
+{
+	if( !headers )
+	{
+		throw "Headers not set; please call initCsv first";
+	}
+}
+
 export function insert(arr, header, value)
 {
+	checkHeaders();
+
 	let index = null;
 
 	for(let x = 0; x < headers.length; x++)
@@ -33,6 +45,17 @@ export function insert(arr, header, value)
 	const old = arr[index];
 	arr[index] = value;
 	return old;
+}
+
+export function insertMultiple(arr,startCol, endCol, data)
+{
+	checkHeaders();
+
+	for( let x = startCol-1; x < endCol; x++ )
+	{
+		const header = headers[x];
+		arr[x] = data[header];
+	}
 }
 
 export function getValue(arr, header)
@@ -56,26 +79,11 @@ export function getValue(arr, header)
 	return arr[index];
 }
 
-export function processCsvMulti(main, others, header, arr)
-{
-	for(const song of arr)
-	{
-		if(!getValue(headers, main, header))
-		{
-			insert(headers, main, header, song);
-		}
-		else
-		{
-			const line = getBlankLine();
-			insert(headers, line, header, song);
-			others.push(line);
-		}
-	}
-}
-
-export function setHeaders( headersIn )
+export function initCsv(headersIn)
 {
 	headers = headersIn;
+	let csv = [headers];
+	return csv;
 }
 
 export function qualify( arr, qualifier="\"" )
@@ -87,4 +95,14 @@ export function qualify( arr, qualifier="\"" )
 			arr[x][y] = `${qualifier}${arr[x][y]}${qualifier}`;
 		}
 	}
+}
+
+export function writeCsv( file, csv, doQualify=true )
+{
+	if( doQualify )
+	{
+		qualify(csv);
+	}
+
+	fs.writeFileSync( file, csv.join("\n") );
 }

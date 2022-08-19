@@ -8,10 +8,7 @@ const monstersPage = "monsters.html";
 
 let spinner = ora("Fetching monster list");
 spinner.start();
-const html = await fetchAsText(monsterUrl, {
-	cache   : monstersPage,
-	cacheTtl: "5 minutes"
-});
+const html = await fetchAsText(monsterUrl);
 let $ = load(html);
 
 const monsterTags = $(".group .text-center h3 a");
@@ -37,10 +34,7 @@ for(const monster of monsters)
 {
 	const name = monster.name;
 	const url = monster.url;
-	const monsterHtml = await fetchAsText(url, {
-		cache   : name + ".html",
-		cacheTtl: "1 hour"
-	});
+	const monsterHtml = await fetchAsText(url);
 	$ = load(monsterHtml);
 	const tables = $("table");
 	const physTable = tables[0];

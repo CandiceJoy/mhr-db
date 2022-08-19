@@ -4,15 +4,17 @@
   "dependencies": {
     "chalk": "^5.0.1",
     "cheerio": "^1.0.0-rc.12",
+    "cli-progress": "^3.11.2",
     "node-fetch": "^3.2.10",
-    "ora": "^6.1.2"
+    "ora": "^6.1.2",
+    "winston": "^3.8.1"
   },
   "type": "module",
   "scripts": {
     "search": "node search.js",
     "armor": "node armor.js",
     "monsters": "node monsters.js",
-    "armor": "node armor.js",
-    "weapons": "node weapons.js"
+    "weapons": "node weapons.js",
+    "quests": "node quests.js"
   }
 }

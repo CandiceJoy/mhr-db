@@ -1,11 +1,13 @@
-import chalk  from "chalk";
-import {load} from "cheerio";
-import fs     from "fs";
-import fetch  from "node-fetch";
-import util   from "util";
+import chalk   from "chalk";
+import {load}  from "cheerio";
+import fs      from "fs";
+import fetch   from "node-fetch";
+import util    from "util";
+import winston from "winston";
 
 export function debug(name, obj, verbose = false, depth = 1, hidden = false)
 {
+	logStart(name,obj,verbose,depth,hidden);
 	const type = typeof obj;
 
 	switch(type)
@@ -72,6 +74,8 @@ export function debug(name, obj, verbose = false, depth = 1, hidden = false)
 		default:
 			console.log(`${name} [Unknown]`);
 	}
+
+	logEnd();
 }
 
 /*
@@ -123,6 +127,7 @@ export function debug(name, obj, verbose = false, depth = 1, hidden = false)
 
 export function color(str, ...tags)
 {
+	logStart(str,tags);
 	let out = null;
 
 	for(let tag of tags)
@@ -181,6 +186,7 @@ export function color(str, ...tags)
 		}
 	}
 
+	logEnd(out);
 	return out;
 }
 
@@ -190,128 +196,128 @@ export function color(str, ...tags)
  cacheTtl - cache time to live
  */
 
-export async function fetchAsFile(url, file, settings = null)
+export async function fetchAsFile(url, file)
 {
+	logStart(url,file);
 	const html = await fetchAsText(url);
 	fs.writeFileSync(file, html);
+	logEnd(html);
 }
 
 export function getFile(file)
 {
-	return fs.readFileSync(file).toString();
+	logStart(file);
+	const out = fs.readFileSync(file).toString();
+	logEnd(out);
+	return out;
 }
 
 export function getObjFromFile(file)
 {
-	return JSON.parse(getFile(file));
+	logStart(file);
+	const obj = JSON.parse(getFile(file));
+	logEnd(obj);
+	return obj;
 }
 
 export function writeFile(file, str)
 {
+	logStart(file);
 	fs.writeFileSync(file, str);
+	logEnd();
 }
 
-export async function fetchAsText(url, settings = null)
+const cacheDir = "./cache";
+const ttl = 1000 * 60 * 60 * 24 * 7; //1 week
+
+export function mkDir(dir)
 {
-	let cache = null;
-
-	if(settings)
+	logStart(dir);
+	if(!fs.existsSync(dir))
 	{
-		if(settings.cache)
+		fs.mkdirSync(dir);
+	}
+	logEnd();
+}
+
+function isExpired(file)
+{
+	logStart(file);
+	const stats = fs.statSync(file);
+	const modified = new Date(stats.mtime).getTime();
+	const expires = modified + ttl;
+
+	if(expires <= modified)
+	{
+		logEnd(true);
+		return true;
+	}
+	else
+	{
+		logEnd(false);
+		return false;
+	}
+}
+
+export function exists(file)
+{
+	logStart(file);
+	const exists = fs.existsSync(file);
+	logEnd(exists);
+	return exists;
+}
+
+export async function fetchAsText(url, doCache = true)
+{
+	logStart(url,doCache);
+	const matches = url.match(/\/[^\/]+/ig);
+	const fileCandidate = matches[matches.length - 1].slice(1);
+	let file = fileCandidate;
+
+	if(!fileCandidate.match(/\.\w+/))
+	{
+		file = fileCandidate + ".html";
+	}
+
+	mkDir(cacheDir);
+	const cache = cacheDir + "/" + file;
+
+	if(doCache && exists(cache))
+	{
+		//Cache Exists
+		log.trace("Cache Exists");
+		if(isExpired(cache))
 		{
-			cache = "cache/" + settings.cache;
-
-			if(!fs.existsSync("./cache"))
-			{
-				fs.mkdirSync("./cache");
-			}
-
-			if(fs.existsSync(cache))
-			{
-				if(settings.cacheTtl)
-				{
-					const ttl = settings.cacheTtl;
-					const stats = fs.statSync(cache);
-					const modified = stats.mtime;
-					let expires = new Date(modified);
-
-					const periods = {
-						day   : function(amt)
-						{
-							expires.setDate(expires.getDate() + amt);
-						},
-						minute: function(amt)
-						{
-							expires.setMinutes(expires.getMinutes() + amt);
-						},
-						second: function(amt)
-						{
-							expires.setSeconds(expires.getSeconds() + amt);
-						},
-						hour  : function(amt)
-						{
-							expires.setHours(expires.getHours() + amt);
-						},
-						month : function(amt)
-						{
-							expires.setMonth(expires.getMonth() + amt);
-						},
-						year  : function(amt)
-						{
-							expires.setFullYear(expires.getFullYear() + amt);
-						},
-						ms    : function(amt)
-						{
-							expires.setMilliseconds(expires.getMilliseconds() + amt);
-						}
-					};
-
-					const dayMatches = ttl.match(/(\d+)\s*days?/i);
-
-					for(const period of Object.keys(periods))
-					{
-						const add = periods[period];
-						const regex = new RegExp(`(\\d+)\\s*${period}s?`, "i");
-						const matches = ttl.match(regex);
-
-						if(matches && matches.length === 2)
-						{
-							add(parseInt(matches[1]));
-						}
-					}
-
-					if(modified.getTime() === expires.getTime())
-					{
-						console.log("Last Modified: ", modified);
-						console.log("Expires: ", expires);
-						throw "Invalid TTL: " + ttl;
-					}
-
-					if(expires.getTime() <= modified.getTime())
-					{
-						console.log(color("Cache expiring for " + cache, "magenta"));
-						await fetchAsFile(url, cache);
-					}
-				}
-
-				return getFile(cache);
-			}
+			//Cache Exists & Expired
+			log.info("Cache expiring for " + url );
+			fs.unlinkSync(cache);
+		}
+		else
+		{
+			log.trace("Cache not expired");
+			//Cache Exists & Not Expired
+			const out = getFile(cache);
+			logEnd(out);
+			return out;
 		}
 	}
 
+	log.trace("Fetching URL");
 	const response = await fetch(url);
 	const html = await response.text();
 
-	if(cache)
+	if(doCache)
 	{
 		writeFile(cache, html);
 	}
 
+	logEnd(html);
 	return html;
 }
 
 function repeat(str, times)
 {
+	logStart(str,times);
 	let ret = "";
 
 	for(let x = 0; x < times; x++)
@@ -319,12 +325,16 @@ function repeat(str, times)
 		ret += str;
 	}
 
+	logEnd(ret);
 	return ret;
 }
 
 function sanitiseString(str)
 {
-	return str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "").trim();
+	logStart(str);
+	const out = str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "").trim();
+	logEnd(out);
+	return out;
 }
 
 const ulCorner = "╔";
@@ -339,6 +349,7 @@ const all = "╬";
 
 function box(strArr)
 {
+	logStart(strArr);
 	if(!Array.isArray(strArr) && strArr.includes("\n"))
 	{
 		strArr = strArr.split("\n");
@@ -371,18 +382,24 @@ function box(strArr)
 	}
 
 	console.log(llCorner + normalLine + lrCorner);
+	logEnd();
 }
 
 const disallowed = ["▣"];
 
 export function sanitise(str)
 {
+	logStart(str);
 	for(const remove of disallowed)
 	{
 		str = str.replaceAll(remove, "");
 	}
 
-	return str.replaceAll(/(^\s+|\s+$)/g, "").replaceAll(/(\s\s+)/g, " ");
+	let out = str.replaceAll(/(^\s+|\s+$)/g, "");
+	out = out.replaceAll(/(\s\s+)/g, " ");
+
+	logEnd(out);
+	return out;
 }
 
 const multiDataRegex = /(.+?)\[\[(.+?)\]\]/;
@@ -404,6 +421,7 @@ const transformDataRegex = /(.+?)\/\/(.+?)\\\\/;
 
 function processHeaders(headers)
 {
+	logStart(headers);
 	const headersOut = [];
 
 	for(const header of headers)
@@ -428,9 +446,9 @@ function processHeaders(headers)
 			obj.map = mapDataRegex;
 		}
 
-		if( transformDataMatches && transformDataMatches.length === 3 )
+		if(transformDataMatches && transformDataMatches.length === 3)
 		{
-			obj.type="transform";
+			obj.type = "transform";
 			const transfomDataStr = transformDataMatches[2];
 			const transformRegex = new RegExp(transfomDataStr);
 			obj.transform = transformRegex;
@@ -462,11 +480,13 @@ function processHeaders(headers)
 		headersOut.push(obj);
 	}
 
+	logEnd(headersOut);
 	return headersOut;
 }
 
 function putDataInObject(dataArr, headerObjArr, destObj)
 {
+	logStart(dataArr,headerObjArr, destObj);
 	if(dataArr.length !== headerObjArr.length)
 	{
 		//throw `Data and headers do not match: ${dataArr.length} for data vs ${headerObjArr.length} for headers`;
@@ -485,9 +505,9 @@ function putDataInObject(dataArr, headerObjArr, destObj)
 		switch(headerObj.type)
 		{
 			case "transform":
-				if( !data.match(headerObj.transform ) )
+				if(!data.match(headerObj.transform))
 				{
-					console.log( data );
+					console.log(data);
 					console.log(headerObj);
 					process.exit(0);
 				}
@@ -546,10 +566,13 @@ function putDataInObject(dataArr, headerObjArr, destObj)
 				throw "Invalid header type: " + header.type;
 		}
 	}
+
+	logEnd(destObj);
 }
 
 export function rowToArray(row, unknownDataProcessor = null)
 {
+	logStart(row,unknownDataProcessor);
 	const $ = load(row);
 	const cols = [];
 	row = $(row).children();
@@ -560,11 +583,11 @@ export function rowToArray(row, unknownDataProcessor = null)
 		let data = sanitise($(col).text());
 		let html = $(col).html();
 
-		if( unknownDataProcessor )
+		if(unknownDataProcessor)
 		{
-			const processed = unknownDataProcessor(x+1,html,data);
+			const processed = unknownDataProcessor(x + 1, html, data);
 
-			if( processed !== html )
+			if(processed !== html)
 			{
 				data = processed;
 			}
@@ -573,19 +596,23 @@ export function rowToArray(row, unknownDataProcessor = null)
 		cols.push(data);
 	}
 
+	logEnd(cols);
 	return cols;
 }
 
 export function rowToObj(row, headers, unknownDataProcessor = null)
 {
+	logStart(row,headers,unknownDataProcessor);
 	const obj = {};
 	const cols = rowToArray(row, unknownDataProcessor);
 	putDataInObject(cols, headers, obj);
+	logEnd(obj);
 	return obj;
 }
 
 export function rowsToArrayOfObj(rows, headers, unknownDataProcessor = null)
 {
+	logStart(rows,headers,unknownDataProcessor);
 	const out = [];
 
 	for(const row of rows)
@@ -593,99 +620,332 @@ export function rowsToArrayOfObj(rows, headers, unknownDataProcessor = null)
 		out.push(rowToObj(row, headers, unknownDataProcessor));
 	}
 
+	logEnd(out);
 	return out;
 }
 
 export function tableToArrayOfObj(table, rawHeaders, unknownDataProcessor = null, rowSelector = "tbody tr")
 {
+	logStart(table,rawHeaders,unknownDataProcessor,rowSelector);
 	const headers = processHeaders(rawHeaders);
 	const $ = load(table);
 	const rows = $(table).find(rowSelector);
-	return rowsToArrayOfObj(rows, headers, unknownDataProcessor);
+	const objs = rowsToArrayOfObj(rows, headers, unknownDataProcessor);
+	logEnd(objs);
+	return objs;
 }
 
-export function generateCsv(objArr,objProcessor=null,qualifier="\"")
+export function generateCsv(objArr, objProcessor = null, qualifier = "\"")
 {
+	logStart(objArr, objProcessor, qualifier);
 	let out = "";
-	const size = Object.keys( objArr[0] ).length;
+	const size = Object.keys(objArr[0]).length;
 	const headers = [];
 
-	for( const header of Object.keys( objArr[0] ) )
+	for(const header of Object.keys(objArr[0]))
 	{
-		headers.push( header );
+		headers.push(header);
 	}
 
-	out += qualifier + headers.join(qualifier+","+qualifier)+qualifier+"\n";
+	out += qualifier + headers.join(qualifier + "," + qualifier) + qualifier + "\n";
 
-	for( const obj of objArr )
+	for(const obj of objArr)
 	{
 		const row = [];
 
-		for( const header of headers )
+		for(const header of headers)
 		{
 			const data = obj[header];
 
-			if( typeof data === "object" )
+			if(typeof data === "object")
 			{
-				row.push(qualifier + objProcessor(header,data).replaceAll(new RegExp(qualifier,"ig"),"") + qualifier);
+				row.push(
+					qualifier + objProcessor(header, data).replaceAll(new RegExp(qualifier, "ig"), "") + qualifier);
 			}
 			else
 			{
-				row.push( qualifier + obj[header].replaceAll(new RegExp(qualifier,"ig"),"") + qualifier );
+				row.push(qualifier + obj[header].replaceAll(new RegExp(qualifier, "ig"), "") + qualifier);
 			}
 		}
 
-		if( row.length !== size )
+		if(row.length !== size)
 		{
 			throw "Row length " + row.length + " does not match csv size " + size;
 		}
 
-		out += row.join(",")+"\n";
+		out += row.join(",") + "\n";
 	}
 
+	logEnd(out);
 	return out;
 }
 
 export function rearrangeObjs(objs, arrangement)
 {
-	for( let x = 0; x < objs.length; x++ )
+	logStart(objs,arrangement);
+	for(let x = 0; x < objs.length; x++)
 	{
-		objs[x] = rearrangeObj(objs[x],arrangement);
+		objs[x] = rearrangeObj(objs[x], arrangement);
 	}
-
+	logEnd(objs);
 	return objs;
 }
 
-export function rearrangeObj(obj,arrangement)
+export function rearrangeObj(obj, arrangement)
 {
+	logStart(obj,arrangement);
 	let objOut = {};
 
-	for( const key of arrangement )
+	for(const key of arrangement)
 	{
 		objOut[key] = obj[key];
 	}
 
+	logEnd(objOut);
 	return objOut;
 }
 
 const EMPTY_REGEX = /^\s*$/;
 
-export function isEmptyString( str )
+export function isEmptyString(str)
 {
-	return str.match( EMPTY_REGEX );
+	logStart(str);
+	const empty =  !str || str === null || str === undefined || str.match(EMPTY_REGEX);
+	logEnd(empty);
+	return empty;
 }
 
-export function arrayToString( arr, separator=", " )
+export function arrayToString(arr, separator = ", ")
 {
-	if( !arr )
+	logStart(arr,separator);
+
+	if(!arr)
 	{
+		log.trace("End arrayToString: No arr");
 		return arr;
 	}
 
-	if( !Array.isArray( arr ) )
+	if(!Array.isArray(arr))
 	{
+		log.trace("End arrayToString: Not an array");
 		return arr;
 	}
 
-	return arr.join(separator);
+	const out = arr.join(separator);
+	logEnd(out);
+	return out;
+}
+
+export function addFieldToObjects(arr, name, value)
+{
+	logStart(arr,name,value);
+	if(typeof value === "function")
+	{
+		for(const obj of arr)
+		{
+			obj[name] = value(obj);
+		}
+	}
+	else
+	{
+		for(const obj of arr)
+		{
+			obj[name] = value;
+		}
+	}
+	logEnd(arr);
+}
+
+export function removeNonwordCharacters(str)
+{
+	logStart(str);
+	str = str.replaceAll(/[^w]/ig, "");
+	logEnd( str );
+	return str;
+}
+
+const myCustomLevels = {
+	levels: {
+		fatal: 0,
+		error: 1,
+		warn : 2,
+		info : 3,
+		debug: 4,
+		trace: 5,
+		data : 6
+	},
+	colors: {
+		fatal: "magenta",
+		error: "red",
+		warn : "yellow",
+		info : "blue",
+		debug: "cyan",
+		trace: "green",
+		data : "orange"
+	}
+};
+
+let padLength = 0;
+
+for(const level in myCustomLevels.levels)
+{
+	if(level.length > padLength)
+	{
+		padLength = level.length;
+	}
+}
+
+function padLevel(level)
+{
+	const matches = level.match(new RegExp("(?:\\x1B\\[\\d\\dm)?(\\w+)\\s*(?:\\x1B\\[\\d\\dm)?", ""));
+	const match = matches[1];
+	let levelCopy = match;
+
+	while(levelCopy.length < padLength)
+	{
+		levelCopy = " " + levelCopy;
+	}
+
+	return level.replace(match, levelCopy);
+}
+
+const myformat = winston.format.combine(winston.format.timestamp({format: "YYYY-MM-DD hh:mm:ss.SSS A"}),
+                                        winston.format.align(), winston.format.splat(), winston.format.prettyPrint(),
+                                        winston.format.printf(
+	                                        info => `[${info.timestamp}] ${padLevel(info.level)}: ${info.message}`));
+
+const myformatWithColors = winston.format.combine(winston.format.colorize(), myformat);
+
+winston.addColors(myCustomLevels.colors);
+
+const transports = [new winston.transports.Console({
+	                                                   format: myformatWithColors,
+	                                                   level : "info"
+                                                   }), new winston.transports.File({
+	                                                                                   options : {flags: "w"},
+	                                                                                   format  : myformat,
+	                                                                                   filename: "trace.log",
+	                                                                                   level   : "trace"
+                                                                                   }), new winston.transports.File({
+	                                                                                                                   options : {flags: "w"},
+	                                                                                                                   format  : myformat,
+	                                                                                                                   filename: "data.log",
+	                                                                                                                   level   : "data"
+                                                                                                                   })];
+
+export const log = winston.createLogger({
+	                                        levels           : myCustomLevels.levels,
+	                                        transports       : transports,
+	                                        handleExceptions : false,
+	                                        handleRejections : false,
+	                                        exitOnError      : true
+                                        });
+
+function getStackTrace()
+{
+	const error = new Error();
+	const stack = error.stack
+	                   .split("\n")
+	                   .slice(2)
+	                   .map((line) => line.replace(/\s+at\s+/, ""));
+	return stack;
+}
+
+function getStackAt(num)
+{
+	return getStackTrace()[num];
+}
+
+function getCaller()
+{
+	return getStackAt(2);
+}
+
+export function sleep(amt)
+{
+	return new Promise(function(resolve){
+		setTimeout(resolve,amt);
+	});
+}
+
+const argLengthDataThreshold = 50;
+const argLengthIgnoreThreshold = 1000;
+const logInspect = {
+	depth     : 2,
+	colors    : false,
+	showHidden: false,
+	compact   : true
+};
+
+function logArgs(...args)
+{
+	const use = [];
+	for( const arg of args )
+	{
+		if( arg && typeof arg === "object" )
+		{
+			const inspection = util.inspect(arg,logInspect);
+
+			if( inspection.length <= argLengthIgnoreThreshold )
+			{
+				log.data( inspection );
+			}
+
+			continue;
+		}
+		else if( arg && arg.toString().length > argLengthIgnoreThreshold )
+		{
+			continue;
+		}
+		else if( arg && arg.toString().length > argLengthDataThreshold )
+		{
+			log.data( arg );
+			continue;
+		}
+		else
+		{
+			use.push(`"${(arg?arg.toString():arg)}"`);
+			continue;
+		}
+	}
+
+	return use.join(", ");
+}
+
+export function logStart(...args)
+{
+	const name = getStackAt(2);
+	const argsOut = logArgs(args);
+	const out = `Begin ${name}(${argsOut})`;
+	log.trace(out);
+}
+
+export function logEnd(returnValue=null)
+{
+	const name = getStackAt(2);
+	let out = `End ${name}`;
+	const argOut = logArgs(returnValue);
+
+	if( argOut )
+	{
+		out += `: ${argOut}`;
+	}
+
+	log.trace(out);
+}
+
+export function writeJson(file,obj, pretty=true)
+{
+	let json;
+
+	if( pretty )
+	{
+		json = JSON.stringify( obj, null, "\t" );
+	}
+	else
+	{
+		json = JSON.stringify( obj );
+	}
+
+	fs.writeFileSync(file, json);
 }
