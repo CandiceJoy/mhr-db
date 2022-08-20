@@ -61,14 +61,6 @@ function prettify(objs)
 	return objs;
 }
 
-function sleep(amt)
-{
-	return new Promise(function(resolve)
-	                   {
-		                   setTimeout(resolve, amt);
-	                   });
-}
-
 let data = [];
 
 for(const url of urls)
