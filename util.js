@@ -7,7 +7,7 @@ import winston from "winston";
 
 export function debug(name, obj, verbose = false, depth = 1, hidden = false)
 {
-	logStart(name,obj,verbose,depth,hidden);
+	logStart(name, obj, verbose, depth, hidden);
 	const type = typeof obj;
 
 	switch(type)
@@ -127,7 +127,7 @@ export function debug(name, obj, verbose = false, depth = 1, hidden = false)
 
 export function color(str, ...tags)
 {
-	logStart(str,tags);
+	logStart(str, tags);
 	let out = null;
 
 	for(let tag of tags)
@@ -190,15 +190,9 @@ export function color(str, ...tags)
 	return out;
 }
 
-/*
- Settings
- cache - filename of cache file to use
- cacheTtl - cache time to live
- */
-
 export async function fetchAsFile(url, file)
 {
-	logStart(url,file);
+	logStart(url, file);
 	const html = await fetchAsText(url);
 	fs.writeFileSync(file, html);
 	logEnd(html);
@@ -269,7 +263,7 @@ export function exists(file)
 
 export async function fetchAsText(url, doCache = true)
 {
-	logStart(url,doCache);
+	logStart(url, doCache);
 	const matches = url.match(/\/[^\/]+/ig);
 	const fileCandidate = matches[matches.length - 1].slice(1);
 	let file = fileCandidate;
@@ -289,7 +283,7 @@ export async function fetchAsText(url, doCache = true)
 		if(isExpired(cache))
 		{
 			//Cache Exists & Expired
-			log.info("Cache expiring for " + url );
+			log.info("Cache expiring for " + url);
 			fs.unlinkSync(cache);
 		}
 		else
@@ -317,7 +311,7 @@ export async function fetchAsText(url, doCache = true)
 
 function repeat(str, times)
 {
-	logStart(str,times);
+	logStart(str, times);
 	let ret = "";
 
 	for(let x = 0; x < times; x++)
@@ -401,6 +395,18 @@ export function sanitise(str)
 	logEnd(out);
 	return out;
 }
+
+/*
+ NOTE: Using this system, make sure the string itself contains the specified characters and that the string itself contains \d, \w, \s, etc.  You will likely have to double-escape everything in the regex.  You do not need to escape the specifiers listed here.
+
+ Multi Data - a,,b,,c[[regex w/ capture groups for each header]] - a,,b,,c part is variable number of headers; based on order, each capture group is mapped to its respective header
+ Split - {{regex w/o capture groups}} - data becomes split into array using regex as delimeter
+ Map - <<regex w/ 2 capture groups>> - data becomes object with capture group 1 as key, capture group 2 as value
+ Transform - //regex w/ 1 capture group\\ - data becomes capture group 1
+
+ Split and map can be used together.  Note that doing this overrides split's return type of array to become object
+ {{regex w/o capture groups}}<<regex w/2 capture groups>> - data becomes object with data split into chunks by the first regex and key/value pairs pulled from the second regex's capture groups
+ */
 
 const multiDataRegex = /(.+?)\[\[(.+?)\]\]/;
 const splitDataRegex = /(.+?)\{\{(.+?)\}\}/;
@@ -486,7 +492,7 @@ function processHeaders(headers)
 
 function putDataInObject(dataArr, headerObjArr, destObj)
 {
-	logStart(dataArr,headerObjArr, destObj);
+	logStart(dataArr, headerObjArr, destObj);
 	if(dataArr.length !== headerObjArr.length)
 	{
 		//throw `Data and headers do not match: ${dataArr.length} for data vs ${headerObjArr.length} for headers`;
@@ -507,8 +513,10 @@ function putDataInObject(dataArr, headerObjArr, destObj)
 			case "transform":
 				if(!data.match(headerObj.transform))
 				{
-					console.log(data);
-					console.log(headerObj);
+					console.log();
+					console.log(chalk.red("Error") + ": Data does not match transform regex");
+					console.log("Data: ",data);
+					console.log("Header: ", headerObj);
 					process.exit(0);
 				}
 				destObj[headerObj.header] = data.match(headerObj.transform)[1];
@@ -572,7 +580,7 @@ function putDataInObject(dataArr, headerObjArr, destObj)
 
 export function rowToArray(row, unknownDataProcessor = null)
 {
-	logStart(row,unknownDataProcessor);
+	logStart(row, unknownDataProcessor);
 	const $ = load(row);
 	const cols = [];
 	row = $(row).children();
@@ -602,7 +610,7 @@ export function rowToArray(row, unknownDataProcessor = null)
 
 export function rowToObj(row, headers, unknownDataProcessor = null)
 {
-	logStart(row,headers,unknownDataProcessor);
+	logStart(row, headers, unknownDataProcessor);
 	const obj = {};
 	const cols = rowToArray(row, unknownDataProcessor);
 	putDataInObject(cols, headers, obj);
@@ -612,7 +620,7 @@ export function rowToObj(row, headers, unknownDataProcessor = null)
 
 export function rowsToArrayOfObj(rows, headers, unknownDataProcessor = null)
 {
-	logStart(rows,headers,unknownDataProcessor);
+	logStart(rows, headers, unknownDataProcessor);
 	const out = [];
 
 	for(const row of rows)
@@ -626,7 +634,7 @@ export function rowsToArrayOfObj(rows, headers, unknownDataProcessor = null)
 
 export function tableToArrayOfObj(table, rawHeaders, unknownDataProcessor = null, rowSelector = "tbody tr")
 {
-	logStart(table,rawHeaders,unknownDataProcessor,rowSelector);
+	logStart(table, rawHeaders, unknownDataProcessor, rowSelector);
 	const headers = processHeaders(rawHeaders);
 	const $ = load(table);
 	const rows = $(table).find(rowSelector);
@@ -682,7 +690,7 @@ export function generateCsv(objArr, objProcessor = null, qualifier = "\"")
 
 export function rearrangeObjs(objs, arrangement)
 {
-	logStart(objs,arrangement);
+	logStart(objs, arrangement);
 	for(let x = 0; x < objs.length; x++)
 	{
 		objs[x] = rearrangeObj(objs[x], arrangement);
@@ -693,7 +701,7 @@ export function rearrangeObjs(objs, arrangement)
 
 export function rearrangeObj(obj, arrangement)
 {
-	logStart(obj,arrangement);
+	logStart(obj, arrangement);
 	let objOut = {};
 
 	for(const key of arrangement)
@@ -710,14 +718,14 @@ const EMPTY_REGEX = /^\s*$/;
 export function isEmptyString(str)
 {
 	logStart(str);
-	const empty =  !str || str === null || str === undefined || str.match(EMPTY_REGEX);
+	const empty = !str || str === null || str === undefined || str.match(EMPTY_REGEX);
 	logEnd(empty);
 	return empty;
 }
 
 export function arrayToString(arr, separator = ", ")
 {
-	logStart(arr,separator);
+	logStart(arr, separator);
 
 	if(!arr)
 	{
@@ -738,7 +746,7 @@ export function arrayToString(arr, separator = ", ")
 
 export function addFieldToObjects(arr, name, value)
 {
-	logStart(arr,name,value);
+	logStart(arr, name, value);
 	if(typeof value === "function")
 	{
 		for(const obj of arr)
@@ -760,7 +768,7 @@ export function removeNonwordCharacters(str)
 {
 	logStart(str);
 	str = str.replaceAll(/[^w]/ig, "");
-	logEnd( str );
+	logEnd(str);
 	return str;
 }
 
@@ -834,11 +842,11 @@ const transports = [new winston.transports.Console({
                                                                                                                    })];
 
 export const log = winston.createLogger({
-	                                        levels           : myCustomLevels.levels,
-	                                        transports       : transports,
-	                                        handleExceptions : false,
-	                                        handleRejections : false,
-	                                        exitOnError      : true
+	                                        levels          : myCustomLevels.levels,
+	                                        transports      : transports,
+	                                        handleExceptions: false,
+	                                        handleRejections: false,
+	                                        exitOnError     : true
                                         });
 
 function getStackTrace()
@@ -863,9 +871,10 @@ function getCaller()
 
 export function sleep(amt)
 {
-	return new Promise(function(resolve){
-		setTimeout(resolve,amt);
-	});
+	return new Promise(function(resolve)
+	                   {
+		                   setTimeout(resolve, amt);
+	                   });
 }
 
 const argLengthDataThreshold = 50;
@@ -880,31 +889,31 @@ const logInspect = {
 function logArgs(...args)
 {
 	const use = [];
-	for( const arg of args )
+	for(const arg of args)
 	{
-		if( arg && typeof arg === "object" )
+		if(arg && typeof arg === "object")
 		{
-			const inspection = util.inspect(arg,logInspect);
+			const inspection = util.inspect(arg, logInspect);
 
-			if( inspection.length <= argLengthIgnoreThreshold )
+			if(inspection.length <= argLengthIgnoreThreshold)
 			{
-				log.data( inspection );
+				log.data(inspection);
 			}
 
 			continue;
 		}
-		else if( arg && arg.toString().length > argLengthIgnoreThreshold )
+		else if(arg && arg.toString().length > argLengthIgnoreThreshold)
 		{
 			continue;
 		}
-		else if( arg && arg.toString().length > argLengthDataThreshold )
+		else if(arg && arg.toString().length > argLengthDataThreshold)
 		{
-			log.data( arg );
+			log.data(arg);
 			continue;
 		}
 		else
 		{
-			use.push(`"${(arg?arg.toString():arg)}"`);
+			use.push(`"${(arg ? arg.toString() : arg)}"`);
 			continue;
 		}
 	}
@@ -920,13 +929,13 @@ export function logStart(...args)
 	log.trace(out);
 }
 
-export function logEnd(returnValue=null)
+export function logEnd(returnValue = null)
 {
 	const name = getStackAt(2);
 	let out = `End ${name}`;
 	const argOut = logArgs(returnValue);
 
-	if( argOut )
+	if(argOut)
 	{
 		out += `: ${argOut}`;
 	}
@@ -934,18 +943,54 @@ export function logEnd(returnValue=null)
 	log.trace(out);
 }
 
-export function writeJson(file,obj, pretty=true)
+export function writeJson(file, obj, pretty = true)
 {
 	let json;
 
-	if( pretty )
+	if(pretty)
 	{
-		json = JSON.stringify( obj, null, "\t" );
+		json = JSON.stringify(obj, null, "\t");
 	}
 	else
 	{
-		json = JSON.stringify( obj );
+		json = JSON.stringify(obj);
 	}
 
 	fs.writeFileSync(file, json);
+}
+
+export function getPrettyArray(arr, separator = " ", elementColor, separatorColor)
+{
+	const colored = arr.map((ele) => color(ele, elementColor));
+	const str = colored.join(color(separator, separatorColor));
+	return str;
+}
+
+function splitSelectors(str, splitBy = ">")
+{
+	const split = str.split(" > ").map(ele => ele.trim());
+	return split;
+}
+
+export function analyzeSelector($, selector, separator = ">")
+{
+	const split = splitSelectors(selector, separator);
+	let previousCount;
+
+	for(let x = 0; x < split.length; x++)
+	{
+		const selected = split.filter((ele, index) => index <= x);
+		const count = $(selected.join(separator)).length;
+
+		if(count === 0 && previousCount >= 1)
+		{
+			console.log("-----------------------------------------------------");
+		}
+
+		let colored = getPrettyArray(selected, " > ", (count >= 1 ? "green" : "red"), "blue");
+		;
+
+		console.log(colored + (count >= 1 ? ": " + chalk.yellow(count) : ""));
+		previousCount = count;
+	}
 }

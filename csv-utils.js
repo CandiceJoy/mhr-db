@@ -88,11 +88,12 @@ export function initCsv(headersIn)
 
 export function qualify( arr, qualifier="\"" )
 {
+	const regex = new RegExp(qualifier,"g");
 	for( let x = 0; x < arr.length; x++ )
 	{
 		for( let y = 0; y < arr[x].length; y++ )
 		{
-			arr[x][y] = `${qualifier}${arr[x][y]}${qualifier}`;
+			arr[x][y] = `${qualifier}${arr[x][y].replaceAll(regex,"")}${qualifier}`;
 		}
 	}
 }

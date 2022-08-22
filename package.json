@@ -15,6 +15,7 @@
     "armor": "node armor.js",
     "monsters": "node monsters.js",
     "weapons": "node weapons.js",
-    "quests": "node quests.js"
+    "quests": "node quests.js",
+    "mhw-items": "node mhw-items.js"
   }
 }
