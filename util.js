@@ -1,6 +1,7 @@
 import chalk   from "chalk";
 import {load}  from "cheerio";
 import fs      from "fs";
+import {JSDOM} from "jsdom";
 import fetch   from "node-fetch";
 import util    from "util";
 import winston from "winston";
@@ -515,7 +516,7 @@ function putDataInObject(dataArr, headerObjArr, destObj)
 				{
 					console.log();
 					console.log(chalk.red("Error") + ": Data does not match transform regex");
-					console.log("Data: ",data);
+					console.log("Data: ", data);
 					console.log("Header: ", headerObj);
 					process.exit(0);
 				}
@@ -993,4 +994,148 @@ export function analyzeSelector($, selector, separator = ">")
 		console.log(colored + (count >= 1 ? ": " + chalk.yellow(count) : ""));
 		previousCount = count;
 	}
+}
+
+//Returns vanilla Document instead of cheerio nonsense
+export async function fetchDocument(url)
+{
+	const html = await fetchAsText(url);
+	const dom = new JSDOM(html, {
+		url                 : url,
+		contentType         : "text/html",
+		includeNodeLocations: true,
+		storageQuota        : Number.MAX_VALUE,
+		features            : {
+			QuerySelector: true
+		}
+	});
+	return dom.window.document;
+}
+
+//For use on vanilla elements only
+/*
+ Processor format
+ //In: Element (Vanilla JS), Number (Integer column number, indexed starting from 1)
+ //Out: Any - arr[row][col] will be set to whatever is returned
+
+ function processor(data, column)
+ {
+ //Data is the raw element
+ //Column is the index (starting from 1) of the column
+
+ //Resulting array, assuming 1 row: [["SomeDivContent",null,{col3:"SomeSpanContent]}, "http://some.url"]]
+ switch( column )
+ {
+ case 1:
+ return data.querySelector("div").textContent;
+ case 2:
+ return null;
+ case 3:
+ return {col3: data.querySelector("span").textContent};
+ case 4:
+ return [{data.querySelector("a").getAttribute("src")}]
+ }
+ }
+ */
+export function getDataFromTable(table, processor = null)
+{
+	const data = [];
+
+	const rows = table.querySelectorAll("table tr");
+
+	for(let rownum = 0; rownum < rows.length; rownum++)
+	{
+		const row = rows[rownum].querySelectorAll("td");
+
+		for(let colnum = 0; colnum < row.length; colnum++)
+		{
+			const col = row[colnum];
+
+			if(!data[rownum])
+			{
+				data[rownum] = [];
+			}
+
+			if(processor)
+			{
+				//Data Processor
+				const colData = processor(col, colnum + 1);
+
+				if(!colData)
+				{
+					continue;
+				}
+
+				data[rownum][colnum] = colData;
+			}
+			else
+			{
+				//No Data Processor
+				data[rownum][colnum] = col;
+			}
+		}
+	}
+
+	return data;
+}
+
+//For use on vanilla elements only
+export function getTableHeaders(table)
+{
+	let headers = [];
+
+	const cols = table.querySelectorAll("th td");
+
+	for(let colnum = 0; colnum < cols.length; colnum++)
+	{
+		const col = cols[colnum];
+		headers[colnum] = sanitise(col.textContent);
+	}
+
+	return headers;
+}
+
+export function arrayToObjArr(arr, headers=null)
+{
+	console.log(`Call: '''${arr}''','''${headers}'''`);
+	const objArr = [];
+
+	for( let x = 0; x < arr.length; x++ )
+	{
+		console.log("Row " + x);
+		const obj = {};
+		const row = arr[x];
+
+		for( let y = 0; y < row.length; y++ )
+		{
+			const col = arr[x][y];
+			const header = headers[y];
+
+			if( Array.isArray(col) )
+			{
+				if( Array.isArray( header ))
+				{
+					for( let z = 0; z < col.length; z++ )
+					{
+						const zHeader = header[z];
+						const zCol = col[z];
+
+						obj[zHeader] = zCol;
+					}
+				}
+				else
+				{
+					obj[header] = col;
+				}
+			}
+			else
+			{
+				obj[header] = col;
+			}
+		}
+
+		objArr[x] = obj;
+	}
+
+	return objArr;
 }

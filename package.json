@@ -5,6 +5,7 @@
     "chalk": "^5.0.1",
     "cheerio": "^1.0.0-rc.12",
     "cli-progress": "^3.11.2",
+    "jsdom": "^20.0.0",
     "node-fetch": "^3.2.10",
     "ora": "^6.1.2",
     "winston": "^3.8.1"
